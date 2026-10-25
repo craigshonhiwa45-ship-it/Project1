@@ -1,0 +1,81 @@
+{
+  "title": "StudyInvite",
+  "type": "object",
+  "properties": {
+    "from_id": {
+      "type": "string",
+      "title": "From ID"
+    },
+    "to_id": {
+      "type": "string",
+      "title": "To ID"
+    },
+    "group_size": {
+      "type": "number",
+      "title": "Group Size"
+    },
+    "when": {
+      "type": "string",
+      "title": "When"
+    },
+    "place": {
+      "type": "string",
+      "title": "Place"
+    },
+    "note": {
+      "type": "string",
+      "title": "Note"
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "enum": [
+        "pending",
+        "accepted",
+        "declined"
+      ]
+    }
+  },
+  "required": [
+    "from_id",
+    "to_id",
+    "group_size",
+    "status"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "data.from_id": "{{user.id}}"
+        },
+        {
+          "data.to_id": "{{user.id}}"
+        }
+      ]
+    },
+    "create": {
+      "data.from_id": "{{user.id}}"
+    },
+    "update": {
+      "$or": [
+        {
+          "data.from_id": "{{user.id}}"
+        },
+        {
+          "data.to_id": "{{user.id}}"
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "data.from_id": "{{user.id}}"
+        },
+        {
+          "data.to_id": "{{user.id}}"
+        }
+      ]
+    }
+  },
+  "name": "StudyInvite"
+}

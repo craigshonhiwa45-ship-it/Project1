@@ -1,0 +1,56 @@
+{
+  "title": "StudyRoom",
+  "type": "object",
+  "properties": {
+    "code": {
+      "type": "string",
+      "title": "Code",
+      "description": "Short join code for the room"
+    },
+    "title": {
+      "type": "string",
+      "title": "Title"
+    },
+    "member_ids": {
+      "type": "array",
+      "title": "Member IDs",
+      "items": {
+        "type": "string"
+      }
+    },
+    "is_active": {
+      "type": "boolean",
+      "title": "Is Active"
+    }
+  },
+  "required": [
+    "code",
+    "title",
+    "member_ids"
+  ],
+  "rls": {
+    "read": {},
+    "create": {
+      "data.member_ids": {
+        "$in": [
+          "{{user.id}}"
+        ]
+      }
+    },
+    "update": {
+      "data.member_ids": {
+        "$in": [
+          "{{user.id}}"
+        ]
+      }
+    },
+    "delete": {
+      "data.member_ids": {
+        "$in": [
+          "{{user.id}}"
+        ]
+      }
+    }
+  },
+  "name": "StudyRoom"
+}

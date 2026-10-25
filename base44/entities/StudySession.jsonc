@@ -1,0 +1,69 @@
+{
+  "title": "StudySession",
+  "type": "object",
+  "properties": {
+    "invite_id": {
+      "type": "string",
+      "title": "Invite ID"
+    },
+    "participant_ids": {
+      "type": "array",
+      "title": "Participant IDs",
+      "items": {
+        "type": "string"
+      }
+    },
+    "duration_minutes": {
+      "type": "number",
+      "title": "Duration (minutes)"
+    },
+    "happened_on": {
+      "type": "string",
+      "title": "Happened on"
+    },
+    "confirmed_by": {
+      "type": "array",
+      "title": "Confirmed By",
+      "items": {
+        "type": "string"
+      }
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes"
+    }
+  },
+  "required": [
+    "participant_ids",
+    "duration_minutes",
+    "happened_on",
+    "confirmed_by"
+  ],
+  "rls": {
+    "read": {
+      "data.participant_ids": "{{user.id}}"
+    },
+    "create": {
+      "data.participant_ids": {
+        "$in": [
+          "{{user.id}}"
+        ]
+      }
+    },
+    "update": {
+      "data.participant_ids": {
+        "$in": [
+          "{{user.id}}"
+        ]
+      }
+    },
+    "delete": {
+      "data.participant_ids": {
+        "$in": [
+          "{{user.id}}"
+        ]
+      }
+    }
+  },
+  "name": "StudySession"
+}

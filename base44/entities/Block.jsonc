@@ -1,0 +1,43 @@
+{
+  "title": "Block",
+  "type": "object",
+  "properties": {
+    "blocker_id": {
+      "type": "string",
+      "title": "Blocker ID"
+    },
+    "blocked_id": {
+      "type": "string",
+      "title": "Blocked ID"
+    },
+    "kind": {
+      "type": "string",
+      "title": "Kind",
+      "enum": [
+        "blocked",
+        "restricted"
+      ],
+      "description": "blocked = no messages at all; restricted = messages hidden by default"
+    }
+  },
+  "required": [
+    "blocker_id",
+    "blocked_id",
+    "kind"
+  ],
+  "rls": {
+    "read": {
+      "data.blocker_id": "{{user.id}}"
+    },
+    "create": {
+      "data.blocker_id": "{{user.id}}"
+    },
+    "update": {
+      "data.blocker_id": "{{user.id}}"
+    },
+    "delete": {
+      "data.blocker_id": "{{user.id}}"
+    }
+  },
+  "name": "Block"
+}

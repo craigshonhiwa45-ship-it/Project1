@@ -1,0 +1,77 @@
+{
+  "title": "Message",
+  "type": "object",
+  "properties": {
+    "conversation_id": {
+      "type": "string",
+      "title": "Conversation ID"
+    },
+    "sender_id": {
+      "type": "string",
+      "title": "Sender ID"
+    },
+    "sender_name": {
+      "type": "string",
+      "title": "Sender Name"
+    },
+    "member_ids": {
+      "type": "array",
+      "title": "Member IDs",
+      "items": {
+        "type": "string"
+      }
+    },
+    "text": {
+      "type": "string",
+      "title": "Text"
+    },
+    "attachments": {
+      "type": "array",
+      "title": "Attachments",
+      "description": "Files, images, voice or video messages attached to this chat message",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "file_uri": {
+            "type": "string"
+          },
+          "duration_ms": {
+            "type": "number"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "conversation_id",
+    "sender_id",
+    "sender_name",
+    "member_ids",
+    "text"
+  ],
+  "rls": {
+    "read": {
+      "data.member_ids": "{{user.id}}"
+    },
+    "create": {
+      "data.member_ids": {
+        "$in": [
+          "{{user.id}}"
+        ]
+      }
+    },
+    "update": {
+      "data.sender_id": "{{user.id}}"
+    },
+    "delete": {
+      "data.sender_id": "{{user.id}}"
+    }
+  },
+  "name": "Message"
+}

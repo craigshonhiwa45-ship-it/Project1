@@ -1,0 +1,74 @@
+{
+  "properties": {
+    "role": {
+      "type": "string",
+      "description": "The role of the user in the app",
+      "enum": [
+        "admin",
+        "user"
+      ]
+    },
+    "university": {
+      "type": "string",
+      "description": "The university the student attends"
+    },
+    "course": {
+      "type": "string",
+      "description": "The course/degree the student is doing"
+    },
+    "year": {
+      "type": "number",
+      "description": "Year of study (1-6)"
+    },
+    "gender": {
+      "type": "string",
+      "description": "Gender of the student",
+      "enum": [
+        "male",
+        "female",
+        "other",
+        "prefer not to say"
+      ]
+    },
+    "bio": {
+      "type": "string",
+      "description": "Short bio for the study profile"
+    },
+    "modules": {
+      "type": "array",
+      "description": "Modules the student is taking this year",
+      "items": {
+        "type": "string"
+      }
+    },
+    "lat": {
+      "type": "number",
+      "description": "Last-known latitude for discovery"
+    },
+    "lng": {
+      "type": "number",
+      "description": "Last-known longitude for discovery"
+    },
+    "location_updated": {
+      "type": "string",
+      "description": "ISO timestamp of the last known location update"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Verified phone number used for phone sign-in"
+    },
+    "hide_social": {
+      "type": "boolean",
+      "description": "When true, the StudyBuddies list is private; only the count is shown"
+    },
+    "last_rating_prompt": {
+      "type": "string",
+      "description": "ISO timestamp of when the user was last asked to rate the app"
+    }
+  },
+  "required": [
+    "role"
+  ],
+  "name": "User",
+  "type": "object"
+}

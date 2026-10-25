@@ -1,0 +1,63 @@
+{
+  "title": "Friendship",
+  "type": "object",
+  "properties": {
+    "requester_id": {
+      "type": "string",
+      "title": "Requester ID"
+    },
+    "addressee_id": {
+      "type": "string",
+      "title": "Addressee ID"
+    },
+    "status": {
+      "type": "string",
+      "title": "Status",
+      "enum": [
+        "pending",
+        "accepted"
+      ]
+    }
+  },
+  "required": [
+    "requester_id",
+    "addressee_id",
+    "status"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "data.requester_id": "{{user.id}}"
+        },
+        {
+          "data.addressee_id": "{{user.id}}"
+        }
+      ]
+    },
+    "create": {
+      "data.requester_id": "{{user.id}}"
+    },
+    "update": {
+      "$or": [
+        {
+          "data.requester_id": "{{user.id}}"
+        },
+        {
+          "data.addressee_id": "{{user.id}}"
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "data.requester_id": "{{user.id}}"
+        },
+        {
+          "data.addressee_id": "{{user.id}}"
+        }
+      ]
+    }
+  },
+  "name": "Friendship"
+}

@@ -1,0 +1,66 @@
+{
+  "title": "Conversation",
+  "type": "object",
+  "properties": {
+    "type": {
+      "type": "string",
+      "title": "Type",
+      "enum": [
+        "direct",
+        "group"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "title": "Title"
+    },
+    "member_ids": {
+      "type": "array",
+      "title": "Member IDs",
+      "items": {
+        "type": "string"
+      }
+    },
+    "invite_id": {
+      "type": "string",
+      "title": "Invite ID"
+    },
+    "room_id": {
+      "type": "string",
+      "title": "Room ID",
+      "description": "Links this conversation to a StudyRoom for online room chat"
+    }
+  },
+  "required": [
+    "type",
+    "title",
+    "member_ids"
+  ],
+  "rls": {
+    "read": {
+      "data.member_ids": "{{user.id}}"
+    },
+    "create": {
+      "data.member_ids": {
+        "$in": [
+          "{{user.id}}"
+        ]
+      }
+    },
+    "update": {
+      "data.member_ids": {
+        "$in": [
+          "{{user.id}}"
+        ]
+      }
+    },
+    "delete": {
+      "data.member_ids": {
+        "$in": [
+          "{{user.id}}"
+        ]
+      }
+    }
+  },
+  "name": "Conversation"
+}

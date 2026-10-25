@@ -1,0 +1,54 @@
+{
+  "title": "Post",
+  "type": "object",
+  "properties": {
+    "text": {
+      "type": "string",
+      "title": "Text"
+    },
+    "visibility": {
+      "type": "string",
+      "title": "Visibility",
+      "enum": [
+        "everyone",
+        "friends"
+      ]
+    },
+    "attachments": {
+      "type": "array",
+      "title": "Attachments",
+      "description": "Images or files attached to the post",
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "file_url": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "required": [
+    "text",
+    "visibility"
+  ],
+  "rls": {
+    "read": {},
+    "create": {
+      "created_by_id": "{{user.id}}"
+    },
+    "update": {
+      "created_by_id": "{{user.id}}"
+    },
+    "delete": {
+      "created_by_id": "{{user.id}}"
+    }
+  },
+  "name": "Post"
+}

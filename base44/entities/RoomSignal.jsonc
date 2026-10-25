@@ -1,0 +1,74 @@
+{
+  "title": "RoomSignal",
+  "type": "object",
+  "properties": {
+    "room_id": {
+      "type": "string",
+      "title": "Room ID"
+    },
+    "from_id": {
+      "type": "string",
+      "title": "From ID"
+    },
+    "to_id": {
+      "type": "string",
+      "title": "To ID"
+    },
+    "kind": {
+      "type": "string",
+      "title": "Kind",
+      "enum": [
+        "offer",
+        "answer",
+        "ice",
+        "leave"
+      ]
+    },
+    "payload": {
+      "type": "object",
+      "title": "Payload"
+    }
+  },
+  "required": [
+    "room_id",
+    "from_id",
+    "to_id",
+    "kind"
+  ],
+  "rls": {
+    "read": {
+      "$or": [
+        {
+          "data.from_id": "{{user.id}}"
+        },
+        {
+          "data.to_id": "{{user.id}}"
+        }
+      ]
+    },
+    "create": {
+      "data.from_id": "{{user.id}}"
+    },
+    "update": {
+      "$or": [
+        {
+          "data.from_id": "{{user.id}}"
+        },
+        {
+          "data.to_id": "{{user.id}}"
+        }
+      ]
+    },
+    "delete": {
+      "$or": [
+        {
+          "data.from_id": "{{user.id}}"
+        },
+        {
+          "data.to_id": "{{user.id}}"
+        }
+      ]
+    }
+  },
+  "name": "RoomSignal"
+}

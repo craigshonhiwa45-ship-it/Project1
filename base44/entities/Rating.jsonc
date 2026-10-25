@@ -1,0 +1,45 @@
+{
+  "title": "Rating",
+  "type": "object",
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "title": "Session ID"
+    },
+    "rater_id": {
+      "type": "string",
+      "title": "Rater ID"
+    },
+    "rated_id": {
+      "type": "string",
+      "title": "Rated ID"
+    },
+    "stars": {
+      "type": "number",
+      "title": "Stars"
+    },
+    "comment": {
+      "type": "string",
+      "title": "Comment"
+    }
+  },
+  "required": [
+    "session_id",
+    "rater_id",
+    "rated_id",
+    "stars"
+  ],
+  "rls": {
+    "read": {},
+    "create": {
+      "data.rater_id": "{{user.id}}"
+    },
+    "update": {
+      "data.rater_id": "{{user.id}}"
+    },
+    "delete": {
+      "data.rater_id": "{{user.id}}"
+    }
+  },
+  "name": "Rating"
+}
