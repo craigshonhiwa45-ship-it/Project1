@@ -1,20 +1,20 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Copy, Check, UserPlus, Users, Video } from 'lucide-react';
+import { useParams, Link } from 'react-router-dom';
+import { Copy, Check, UserPlus, Users, Video } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import BuddyAvatar from '@/components/BuddyAvatar';
+import BackButton from '@/components/BackButton';
 import ChatComposer from '@/components/ChatComposer';
 import MessageAttachment from '@/components/MessageAttachment';
 import RoomCall from '@/components/RoomCall';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
-import { timeAgo } from '@/lib/studybuddy';
+import { timeAgo, fetchFriendships, buddyIdsFrom } from '@/lib/studybuddy';
 import { cn } from '@/lib/utils';
 
 export default function Room() {
   const { code } = useParams();
-  const navigate = useNavigate();
   const [me, setMe] = useState(null);
   const [room, setRoom] = useState(null);
   const [convo, setConvo] = useState(null);
@@ -31,15 +31,14 @@ export default function Room() {
     const found = (rPage.items || rPage)[0];
     if (!found) return;
     setRoom(found);
-    const [uPage, cPage, mine, theirs] = await Promise.all([
+    const [uPage, cPage, friendships] = await Promise.all([
       base44.entities.User.filter({}),
       base44.entities.Conversation.filter({ room_id: found.id }),
-      base44.entities.Friendship.filter({ requester_id: current.id, status: 'accepted' }),
-      base44.entities.Friendship.filter({ addressee_id: current.id, status: 'accepted' }),
+      fetchFriendships(current.id),
     ]);
     setUsers(Object.fromEntries((uPage.items || uPage).map((u) => [u.id, u])));
     setConvo((cPage.items || cPage)[0] || null);
-    setFriendIds([...mine.map((f) => f.addressee_id), ...theirs.map((f) => f.requester_id)]);
+    setFriendIds(buddyIdsFrom(friendships, current.id));
   }, [code]);
 
   useEffect(() => { load(); }, [load]);
@@ -119,9 +118,7 @@ export default function Room() {
   return (
     <div className="space-y-4 pb-6">
       <header className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" className="rounded-full" onClick={() => navigate('/rooms')}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
+        <BackButton fallbackTo="/rooms" label="Back to rooms" />
         <div className="min-w-0 flex-1">
           <h1 className="truncate font-heading text-lg font-extrabold">{room.title}</h1>
           <p className="text-xs text-muted-foreground">Code {room.code}</p>
@@ -138,16 +135,16 @@ export default function Room() {
           <h2 className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-muted-foreground">
             <Users className="h-4 w-4" /> Room chat
           </h2>
-          <span className="text-[11px] text-muted-foreground">{room.member_ids.length} member{room.member_ids.length === 1 ? '' : 's'}</span>
+          <span className="text-xs text-muted-foreground">{room.member_ids.length} member{room.member_ids.length === 1 ? '' : 's'}</span>
         </div>
         {invitables.length > 0 && (
           <div className="mb-3 flex flex-wrap items-center gap-1.5 rounded-3xl border border-border bg-card p-3">
-            <span className="text-[11px] font-semibold text-muted-foreground">Invite buddies:</span>
+            <span className="text-xs font-semibold text-muted-foreground">Invite buddies:</span>
             {invitables.slice(0, 6).map((id) => (
               <button
                 key={id}
                 onClick={() => inviteFriend(id)}
-                className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold transition hover:border-primary/40 hover:text-primary"
+                className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs font-semibold transition hover:border-primary/40 hover:text-primary"
               >
                 <UserPlus className="h-3 w-3" /> {users[id]?.full_name || 'Buddy'}
               </button>
@@ -160,14 +157,14 @@ export default function Room() {
             return (
               <div key={m.id} className={cn('flex', mine ? 'justify-end' : 'justify-start')}>
                 <div className={cn('max-w-[85%] rounded-3xl px-3.5 py-2 text-sm shadow-sm', mine ? 'rounded-br-lg bg-primary text-primary-foreground' : 'rounded-bl-lg bg-muted text-foreground')}>
-                  {!mine && <p className="mb-0.5 text-[11px] font-bold text-secondary">{m.sender_name || 'Buddy'}</p>}
+                  {!mine && <p className="mb-0.5 text-xs font-bold text-secondary">{m.sender_name || 'Buddy'}</p>}
                   {m.text && <p className="whitespace-pre-wrap break-words">{m.text}</p>}
                   {(m.attachments || []).length > 0 && (
                     <div className={cn('mt-1.5 space-y-1.5', !m.text && 'mt-0')}>
                       {m.attachments.map((a, i) => <MessageAttachment key={i} attachment={a} />)}
                     </div>
                   )}
-                  <p className={cn('mt-0.5 text-right text-[10px]', mine ? 'text-primary-foreground/70' : 'text-muted-foreground')}>
+                  <p className={cn('mt-0.5 text-right text-xs', mine ? 'text-primary-foreground/70' : 'text-muted-foreground')}>
                     {timeAgo(m.created_date)}
                   </p>
                 </div>

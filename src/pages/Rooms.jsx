@@ -133,14 +133,14 @@ export default function Rooms() {
                     Code {room.code} · {(room.member_ids || []).length} member{(room.member_ids || []).length === 1 ? '' : 's'}
                   </p>
                 </div>
-                <Button size="sm" variant="ghost" className="h-8 rounded-full px-2" onClick={() => copy(room.code, room.id)} aria-label="Copy room code">
+                <Button size="sm" variant="ghost" className="min-h-[44px] min-w-[44px] rounded-full px-2" onClick={() => copy(room.code, room.id)} aria-label="Copy room code">
                   {copied === room.id ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
                 </Button>
-                <Button size="sm" className="h-8 shrink-0 rounded-full px-3" onClick={() => navigate(`/room/${room.code}`)}>Open</Button>
+                <Button size="sm" className="min-h-[44px] shrink-0 rounded-full px-3" onClick={() => navigate(`/room/${room.code}`)}>Open</Button>
               </div>
               <button
                 onClick={() => copy(`${window.location.origin}/room/${room.code}`, room.id + 'link')}
-                className="mt-2 flex items-center gap-1.5 text-[11px] font-semibold text-primary hover:underline"
+                className="mt-2 flex min-h-[44px] items-center gap-1.5 text-xs font-semibold text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
                 {copied === room.id + 'link' ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
                 {copied === room.id + 'link' ? 'Link copied!' : 'Copy invite link'}

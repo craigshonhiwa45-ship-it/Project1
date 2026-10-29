@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, MoreVertical, Flag, Ban, EyeOff, Eye, Trash2, UserPlus } from 'lucide-react';
+import { MoreVertical, Flag, Ban, EyeOff, Eye, Trash2, UserPlus } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import BuddyAvatar from '@/components/BuddyAvatar';
+import BackButton from '@/components/BackButton';
 import ChatComposer from '@/components/ChatComposer';
 import MessageAttachment from '@/components/MessageAttachment';
 import ReportDialog from '@/components/ReportDialog';
@@ -14,7 +15,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
-import { timeAgo } from '@/lib/studybuddy';
+import { timeAgo, fetchFriendships, buddyIdsFrom } from '@/lib/studybuddy';
 
 const REQUEST_LIMIT = 3;
 
@@ -35,16 +36,15 @@ export default function Chat() {
   const load = useCallback(async () => {
     const current = await base44.auth.me();
     setMe(current);
-    const [uPage, cPage, mine, theirs, myBlocks] = await Promise.all([
+    const [uPage, cPage, friendships, myBlocks] = await Promise.all([
       base44.entities.User.filter({}),
       base44.entities.Conversation.filter({ member_ids: current.id }),
-      base44.entities.Friendship.filter({ requester_id: current.id, status: 'accepted' }),
-      base44.entities.Friendship.filter({ addressee_id: current.id, status: 'accepted' }),
+      fetchFriendships(current.id),
       base44.entities.Block.filter({ blocker_id: current.id }),
     ]);
     setUsers(Object.fromEntries((uPage.items || uPage).map((u) => [u.id, u])));
     setConvos((cPage.items || cPage).sort((a, b) => (b.updated_date || '').localeCompare(a.updated_date || '')));
-    setFriendIds([...mine.map((f) => f.addressee_id), ...theirs.map((f) => f.requester_id)]);
+    setFriendIds(buddyIdsFrom(friendships, current.id));
     setBlocks(myBlocks);
   }, []);
 
@@ -95,6 +95,20 @@ export default function Chat() {
 
   const send = async (text, attachments) => {
     if (!active) return;
+    // Show the bubble immediately, marked as sending.
+    const tempId = `pending-${Date.now()}`;
+    const draft = {
+      id: tempId,
+      conversation_id: active.id,
+      sender_id: me.id,
+      sender_name: me.full_name,
+      member_ids: active.member_ids,
+      text,
+      attachments: attachments || [],
+      created_date: new Date().toISOString(),
+      pending: true,
+    };
+    setMessages((ms) => [...ms, draft]);
     try {
       const res = await base44.functions.invoke('sendMessage', {
         conversation_id: active.id,
@@ -102,8 +116,15 @@ export default function Chat() {
         attachments: attachments || [],
       });
       const saved = res?.data?.message;
-      if (saved) setMessages((ms) => (ms.some((m) => m.id === saved.id) ? ms.map((m) => (m.id === saved.id ? saved : m)) : [...ms, saved]));
+      setMessages((ms) => {
+        const withoutDraft = ms.filter((m) => m.id !== tempId);
+        if (!saved) return withoutDraft;
+        return withoutDraft.some((m) => m.id === saved.id)
+          ? withoutDraft.map((m) => (m.id === saved.id ? saved : m))
+          : [...withoutDraft, saved];
+      });
     } catch (err) {
+      setMessages((ms) => ms.filter((m) => m.id !== tempId));
       toast({
         title: 'Message not sent',
         description: err?.response?.data?.error || 'Could not send your message. Try again.',
@@ -176,21 +197,19 @@ export default function Chat() {
         : '';
 
     return (
-      <div className="-mx-4 flex h-[calc(100vh-7.5rem)] flex-col">
+      <div className="-mx-4 flex h-[calc(100dvh_-_7.5rem_-_env(safe-area-inset-top))] flex-col">
         <header className="flex items-center gap-3 border-b border-border bg-card px-4 py-3">
-          <Link to="/chat" className="rounded-full p-1.5 hover:bg-muted">
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
+          <BackButton fallbackTo="/chat" label="Back to chats" />
           <BuddyAvatar name={otherName} size="sm" />
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-bold">{otherName}</p>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               {active.type === 'group' ? 'Group chat' : requestConvo ? 'Chat request' : 'Direct chat'}
             </p>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full" aria-label="Chat options">
+              <Button variant="ghost" size="icon" className="rounded-full focus-visible:ring-2 focus-visible:ring-offset-2" aria-label="Chat options">
                 <MoreVertical className="h-5 w-5" />
               </Button>
             </DropdownMenuTrigger>
@@ -225,7 +244,7 @@ export default function Chat() {
             <span className="flex-1 text-muted-foreground">
               Chat request — you are not study buddies yet, so they can send up to {REQUEST_LIMIT} messages.
             </span>
-            <Button size="sm" className="h-7 rounded-full px-3" onClick={() => addBack(otherId)}>
+            <Button size="sm" className="min-h-[44px] rounded-full px-3" onClick={() => addBack(otherId)}>
               <UserPlus className="h-3 w-3" /> Add buddy
             </Button>
           </div>
@@ -234,7 +253,7 @@ export default function Chat() {
         {hiddenCount > 0 && (
           <button
             onClick={() => setShowRestricted((s) => !s)}
-            className="border-b border-border bg-muted/40 px-4 py-1.5 text-[11px] font-semibold text-muted-foreground"
+            className="min-h-[44px] border-b border-border bg-muted/40 px-4 py-1.5 text-xs font-semibold text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             {showRestricted ? 'Hide' : 'Show'} {hiddenCount} restricted or blocked message{hiddenCount === 1 ? '' : 's'}
           </button>
@@ -245,9 +264,9 @@ export default function Chat() {
             const mine = m.sender_id === me.id;
             return (
               <div key={m.id} className={cn('flex', mine ? 'justify-end' : 'justify-start')}>
-                <div className={cn('group max-w-[80%] rounded-3xl px-4 py-2.5 text-sm shadow-sm', mine ? 'rounded-br-lg bg-primary text-primary-foreground' : 'rounded-bl-lg bg-card text-foreground')}>
+                <div className={cn('group max-w-[80%] rounded-3xl px-4 py-2.5 text-sm shadow-sm', mine ? 'rounded-br-lg bg-primary text-primary-foreground' : 'rounded-bl-lg bg-card text-foreground', m.pending && 'opacity-70')}>
                   {!mine && active.type === 'group' && (
-                    <p className="mb-0.5 text-[11px] font-bold text-secondary">{m.sender_name || 'Buddy'}</p>
+                    <p className="mb-0.5 text-xs font-bold text-secondary">{m.sender_name || 'Buddy'}</p>
                   )}
                   {m.text && <p className="whitespace-pre-wrap break-words leading-relaxed">{m.text}</p>}
                   {(m.attachments || []).length > 0 && (
@@ -256,11 +275,15 @@ export default function Chat() {
                     </div>
                   )}
                   <div className="mt-1 flex items-center justify-end gap-2">
-                    <span className={cn('text-[10px]', mine ? 'text-primary-foreground/70' : 'text-muted-foreground')}>
-                      {timeAgo(m.created_date)}
+                    <span className={cn('text-xs', mine ? 'text-primary-foreground/70' : 'text-muted-foreground')}>
+                      {m.pending ? 'Sending…' : timeAgo(m.created_date)}
                     </span>
                     {mine && (
-                      <button onClick={() => deleteMessage(m)} aria-label="Delete message" className="opacity-0 transition group-hover:opacity-100">
+                      <button
+                        onClick={() => deleteMessage(m)}
+                        aria-label="Delete message"
+                        className="inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full opacity-0 transition focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background group-hover:opacity-100"
+                      >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     )}
@@ -306,7 +329,7 @@ export default function Chat() {
         <TabsList className="grid w-full grid-cols-2 rounded-2xl">
           <TabsTrigger value="chats">Chats</TabsTrigger>
           <TabsTrigger value="requests">
-            Requests{requestConvos.length > 0 && <Badge className="ml-1.5 rounded-full bg-primary px-1.5 text-[10px]">{requestConvos.length}</Badge>}
+            Requests{requestConvos.length > 0 && <Badge className="ml-1.5 rounded-full bg-primary px-1.5 text-xs">{requestConvos.length}</Badge>}
           </TabsTrigger>
         </TabsList>
       </Tabs>
@@ -316,16 +339,16 @@ export default function Chat() {
           <Link
             key={c.id}
             to={`/chat/${c.id}`}
-            className="flex items-center gap-3 rounded-3xl border border-border bg-card p-3.5 shadow-sm transition hover:border-primary/40"
+            className="flex items-center gap-3 rounded-3xl border border-border bg-card p-3.5 shadow-sm transition hover:border-primary/40 active:scale-[0.99] active:bg-muted/60"
           >
             <BuddyAvatar name={nameIn(c)} size="sm" />
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-bold">{nameIn(c)}</p>
-              <p className="truncate text-xs text-muted-foreground">
+              <p className="truncate text-sm text-muted-foreground">
                 {c.type === 'group' ? 'Group chat' : isRequestConvo(c) ? 'Wants to chat with you' : 'Direct chat'}
               </p>
             </div>
-            <span className="shrink-0 text-[11px] text-muted-foreground">{timeAgo(c.updated_date || c.created_date)}</span>
+            <span className="shrink-0 text-xs text-muted-foreground">{timeAgo(c.updated_date || c.created_date)}</span>
           </Link>
         ))}
         {(tab === 'chats' ? chatConvos : requestConvos).length === 0 && (

@@ -14,6 +14,11 @@
       "type": "string",
       "title": "Conversation ID"
     },
+    "post_id": {
+      "type": "string",
+      "title": "Post ID",
+      "description": "Set when the report is about a feed post"
+    },
     "reason": {
       "type": "string",
       "title": "Reason",

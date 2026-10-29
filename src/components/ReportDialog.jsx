@@ -4,12 +4,12 @@ import { base44 } from '@/api/base44Client';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import SelectSheet from '@/components/SelectSheet';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 
-export default function ReportDialog({ open, onOpenChange, meId, reportedId, reportedName, conversationId }) {
+export default function ReportDialog({ open, onOpenChange, meId, reportedId, reportedName, conversationId, postId }) {
   const [reason, setReason] = useState('harassment');
   const [details, setDetails] = useState('');
   const [sending, setSending] = useState(false);
@@ -22,13 +22,14 @@ export default function ReportDialog({ open, onOpenChange, meId, reportedId, rep
         reporter_id: meId,
         reported_id: reportedId,
         conversation_id: conversationId || '',
+        post_id: postId || '',
         reason,
         details: details.trim(),
         status: 'open',
       });
       onOpenChange(false);
       setDetails('');
-      toast({ title: 'Report sent', description: 'Thank you — our team will review this conversation.' });
+      toast({ title: 'Report sent', description: 'Thank you — our team reviews every report within 24 hours.' });
     } finally {
       setSending(false);
     }
@@ -43,15 +44,17 @@ export default function ReportDialog({ open, onOpenChange, meId, reportedId, rep
         <div className="space-y-3.5">
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-muted-foreground">What is happening?</label>
-            <Select value={reason} onValueChange={setReason}>
-              <SelectTrigger className="rounded-2xl"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="harassment">Harassment or bullying</SelectItem>
-                <SelectItem value="inappropriate content">Inappropriate content</SelectItem>
-                <SelectItem value="spam">Spam or scam</SelectItem>
-                <SelectItem value="other">Something else</SelectItem>
-              </SelectContent>
-            </Select>
+            <SelectSheet
+              value={reason}
+              onValueChange={setReason}
+              title="What is happening?"
+              options={[
+                { value: 'harassment', label: 'Harassment or bullying' },
+                { value: 'inappropriate content', label: 'Inappropriate content' },
+                { value: 'spam', label: 'Spam or scam' },
+                { value: 'other', label: 'Something else' },
+              ]}
+            />
           </div>
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-muted-foreground">Details (optional)</label>

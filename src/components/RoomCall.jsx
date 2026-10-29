@@ -93,37 +93,49 @@ export default function RoomCall({ room, me, otherMembers }) {
     setStatus('idle');
   };
 
-  // Poll for incoming signals (offers, answers, ICE candidates, hangups).
+  // Incoming signals arrive by realtime; a slow poll only catches missed ones.
   useEffect(() => {
     if (!peerId) return;
     let alive = true;
-    const poll = async () => {
+    const handle = async (sig) => {
+      try {
+        if (sig.kind === 'offer' && !connectedRef.current) {
+          pendingOffer.current = sig.payload?.sdp ? sig.payload.sdp : sig.payload;
+          setStatus((s) => (s === 'connected' ? s : 'ringing'));
+        } else if (sig.kind === 'answer' && pcRef.current) {
+          const sdp = sig.payload?.sdp || sig.payload;
+          if (sdp) await pcRef.current.setRemoteDescription(new RTCSessionDescription(sdp));
+          setStatus('connected');
+          connectedRef.current = true;
+        } else if (sig.kind === 'ice' && pcRef.current && sig.payload?.candidate) {
+          try { await pcRef.current.addIceCandidate(new RTCIceCandidate(sig.payload.candidate)); } catch { /* late candidate */ }
+        } else if (sig.kind === 'leave') {
+          cleanup(false);
+        }
+      } catch { /* skip malformed signal */ }
+      try { await base44.entities.RoomSignal.delete(sig.id); } catch { /* leave for cleanup */ }
+    };
+    const drain = async () => {
       if (!alive) return;
       try {
         const page = await base44.entities.RoomSignal.filter({ room_id: room.id, to_id: me.id });
         for (const sig of page.items || page) {
-          try {
-            if (sig.kind === 'offer' && !connectedRef.current) {
-              pendingOffer.current = sig.payload?.sdp ? sig.payload.sdp : sig.payload;
-              setStatus((s) => (s === 'connected' ? s : 'ringing'));
-            } else if (sig.kind === 'answer' && pcRef.current) {
-              const sdp = sig.payload?.sdp || sig.payload;
-              if (sdp) await pcRef.current.setRemoteDescription(new RTCSessionDescription(sdp));
-              setStatus('connected');
-              connectedRef.current = true;
-            } else if (sig.kind === 'ice' && pcRef.current && sig.payload?.candidate) {
-              try { await pcRef.current.addIceCandidate(new RTCIceCandidate(sig.payload.candidate)); } catch { /* late candidate */ }
-            } else if (sig.kind === 'leave') {
-              cleanup(false);
-            }
-          } catch { /* skip malformed signal */ }
-          try { await base44.entities.RoomSignal.delete(sig.id); } catch { /* leave for cleanup */ }
+          if (!alive) return;
+          await handle(sig);
         }
       } catch { /* transient poll error */ }
     };
-    poll();
-    const t = setInterval(poll, 1500);
-    return () => { alive = false; clearInterval(t); };
+    drain();
+    let unsub;
+    try {
+      unsub = base44.entities.RoomSignal.subscribe((event) => {
+        const sig = event && event.data;
+        if (!alive || !sig || sig.to_id !== me.id || sig.room_id !== room.id) return;
+        handle(sig);
+      });
+    } catch { /* realtime unavailable */ }
+    const t = setInterval(drain, 10000);
+    return () => { alive = false; unsub?.(); clearInterval(t); };
   }, [room.id, me.id, peerId, cleanup]);
 
   const toggleMute = () => {
@@ -187,7 +199,7 @@ export default function RoomCall({ room, me, otherMembers }) {
         <div className="relative aspect-video">
           <video ref={localRef} autoPlay playsInline muted className="h-full w-full object-cover" />
           {(!localStream.current || camOff) && (
-            <div className="absolute inset-0 flex items-center justify-center bg-slate-800 text-[11px] text-slate-300">You</div>
+            <div className="absolute inset-0 flex items-center justify-center bg-slate-800 text-xs text-slate-300">You</div>
           )}
         </div>
       </div>

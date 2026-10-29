@@ -81,8 +81,36 @@ export async function findOrCreateDirectConversation(meId, buddyId, buddyName) {
   });
 }
 
+/** All friendships for a user (sent + received) in ONE request. */
+export async function fetchFriendships(userId) {
+  const res = await base44.entities.Friendship.filter({
+    $or: [{ requester_id: userId }, { addressee_id: userId }],
+  });
+  return Array.isArray(res) ? res : res.items || [];
+}
+
+/** Ids of accepted buddies from a fetchFriendships result. */
+export function buddyIdsFrom(friendships, userId) {
+  return friendships
+    .filter((f) => f.status === 'accepted')
+    .map((f) => (f.requester_id === userId ? f.addressee_id : f.requester_id));
+}
+
+/**
+ * Loads every profile. The first call can go out while the session token is
+ * still refreshing (several lists load in parallel on page open), so retry once.
+ */
+async function fetchAllUsers() {
+  try {
+    return await base44.entities.User.filter({});
+  } catch (err) {
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    return base44.entities.User.filter({});
+  }
+}
+
 export async function fetchUserMap() {
-  const users = await base44.entities.User.filter({});
+  const users = await fetchAllUsers();
   return Object.fromEntries(users.map((u) => [u.id, u]));
 }
 

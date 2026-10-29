@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Link, useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, CalendarPlus, UserPlus, MapPin, GraduationCap, MessageCircle, Users } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { CalendarPlus, UserPlus, MapPin, GraduationCap, MessageCircle, Users } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import BuddyAvatar from '@/components/BuddyAvatar';
+import BackButton from '@/components/BackButton';
 import Stars from '@/components/Stars';
 import StudyInviteDialog from '@/components/StudyInviteDialog';
 import { Card, CardContent } from '@/components/ui/card';
@@ -79,9 +80,7 @@ export default function BuddyProfile() {
   return (
     <div className="space-y-5 pb-6">
       <header className="flex items-center gap-2">
-        <Link to="/" className="rounded-full p-2 hover:bg-muted">
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
+        <BackButton fallbackTo="/" label="Back to discover" />
         <h1 className="font-heading text-lg font-extrabold">Buddy profile</h1>
       </header>
 
@@ -113,14 +112,14 @@ export default function BuddyProfile() {
               {buddyCount ?? '…'} StudyBuddies{buddy.hide_social ? ' · list is private' : ''}
             </p>
           </div>
-          <p className="mt-3 text-xs text-muted-foreground">{buddy.course || 'Course not set'}</p>
+          <p className="mt-3 text-sm text-muted-foreground">{buddy.course || 'Course not set'}</p>
           {buddy.bio && <p className="mt-3 text-sm italic text-muted-foreground">“{buddy.bio}”</p>}
           <div className="mt-4 flex flex-wrap gap-1.5">
             {(buddy.modules || []).map((m) => (
               <Badge
                 key={m}
                 variant="outline"
-                className={`rounded-full text-[11px] ${shared.includes(m) ? 'border-primary/40 bg-primary/5 text-primary' : 'text-muted-foreground'}`}
+                className={`rounded-full text-xs ${shared.includes(m) ? 'border-primary/40 bg-primary/5 text-primary' : 'text-muted-foreground'}`}
               >
                 {m}
               </Badge>

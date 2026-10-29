@@ -7,8 +7,8 @@ import Stars from '@/components/Stars';
 import StudyInviteDialog from '@/components/StudyInviteDialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { distanceKm, matchScore, sendFriendRequest, updateMyLocation, timeAgo } from '@/lib/studybuddy';
+import SelectSheet from '@/components/SelectSheet';
+import { distanceKm, matchScore, sendFriendRequest, updateMyLocation, timeAgo, fetchFriendships } from '@/lib/studybuddy';
 import { useToast } from '@/components/ui/use-toast';
 
 export default function Discover() {
@@ -26,11 +26,10 @@ export default function Discover() {
   const load = useCallback(async () => {
     const current = await base44.auth.me();
     setMe(current);
-    const [page, ratings, mine, theirs] = await Promise.all([
+    const [page, ratings, friendships] = await Promise.all([
       base44.entities.User.filter({}),
       base44.entities.Rating.filter({}),
-      base44.entities.Friendship.filter({ requester_id: current.id }),
-      base44.entities.Friendship.filter({ addressee_id: current.id }),
+      fetchFriendships(current.id),
     ]);
     const rated = {};
     ratings.forEach((r) => {
@@ -43,7 +42,7 @@ export default function Discover() {
       .map((u) => ({ ...u, avg_rating: rated[u.id] ? rated[u.id].sum / rated[u.id].n : 0 }));
     setUsers(withRatings);
     const map = {};
-    [...mine, ...theirs].forEach((f) => {
+    friendships.forEach((f) => {
       map[f.requester_id === current.id ? f.addressee_id : f.requester_id] = f.status;
     });
     setFriendState(map);
@@ -96,7 +95,7 @@ export default function Discover() {
         </div>
         <button
           onClick={shareLocation}
-          className="flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-2 text-xs font-semibold text-primary shadow-sm transition hover:bg-primary/5"
+          className="flex min-h-[44px] items-center gap-1.5 rounded-full border border-border bg-card px-3 py-2 text-xs font-semibold text-primary shadow-sm transition hover:bg-primary/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
           <MapPin className="h-3.5 w-3.5" />
           {locating ? 'Locating…' : locationKnown ? `Updated ${timeAgo(me.location_updated)}` : 'Use my location'}
@@ -127,7 +126,8 @@ export default function Discover() {
             <button
               key={m}
               onClick={() => setModuleFilter(m)}
-              className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+              aria-pressed={moduleFilter === m}
+              className={`inline-flex min-h-[44px] shrink-0 items-center rounded-full border px-3 py-1.5 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
                 moduleFilter === m
                   ? 'border-primary bg-primary text-primary-foreground'
                   : 'border-border bg-card text-muted-foreground hover:border-primary/40'
@@ -138,22 +138,25 @@ export default function Discover() {
           ))}
         </div>
         <div className="mt-2 flex gap-2">
-          <Select value={yearFilter} onValueChange={setYearFilter}>
-            <SelectTrigger className="h-8 flex-1 rounded-full text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="any">Any year</SelectItem>
-              {[1, 2, 3, 4, 5, 6].map((y) => <SelectItem key={y} value={String(y)}>Year {y}</SelectItem>)}
-            </SelectContent>
-          </Select>
-          <Select value={genderFilter} onValueChange={setGenderFilter}>
-            <SelectTrigger className="h-8 flex-1 rounded-full text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="any">Any gender</SelectItem>
-              <SelectItem value="male">Male</SelectItem>
-              <SelectItem value="female">Female</SelectItem>
-              <SelectItem value="other">Other</SelectItem>
-            </SelectContent>
-          </Select>
+          <SelectSheet
+            value={yearFilter}
+            onValueChange={setYearFilter}
+            title="Year of study"
+            options={[{ value: 'any', label: 'Any year' }, ...[1, 2, 3, 4, 5, 6].map((y) => ({ value: String(y), label: `Year ${y}` }))]}
+            className="min-h-[44px] flex-1 rounded-full"
+          />
+          <SelectSheet
+            value={genderFilter}
+            onValueChange={setGenderFilter}
+            title="Gender"
+            options={[
+              { value: 'any', label: 'Any gender' },
+              { value: 'male', label: 'Male' },
+              { value: 'female', label: 'Female' },
+              { value: 'other', label: 'Other' },
+            ]}
+            className="min-h-[44px] flex-1 rounded-full"
+          />
         </div>
       </div>
 
@@ -164,7 +167,7 @@ export default function Discover() {
               <BuddyAvatar name={u.full_name} size="md" />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <Link to={`/buddy/${u.id}`} className="truncate font-heading font-bold hover:text-primary">
+                  <Link to={`/buddy/${u.id}`} className="truncate rounded-lg py-1.5 font-heading font-bold transition hover:text-primary active:text-primary">
                     {u.full_name}
                   </Link>
                   {score >= 55 && (
@@ -173,10 +176,10 @@ export default function Discover() {
                     </Badge>
                   )}
                 </div>
-                <p className="truncate text-xs text-muted-foreground">
+                <p className="truncate text-sm text-muted-foreground">
                   {u.university || 'University not set'} · Year {u.year || '?'}
                 </p>
-                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
                   <span className="inline-flex items-center gap-1">
                     <MapPin className="h-3 w-3 text-primary" /> {dist == null ? 'Location off' : `${dist} km away`}
                   </span>
@@ -192,7 +195,7 @@ export default function Discover() {
                 <Badge
                   key={m}
                   variant="outline"
-                  className={`rounded-full text-[11px] ${
+                  className={`rounded-full text-xs ${
                     shared.includes(m) ? 'border-primary/40 bg-primary/5 text-primary' : 'text-muted-foreground'
                   }`}
                 >
@@ -201,17 +204,17 @@ export default function Discover() {
               ))}
             </div>
             <div className="mt-3 flex items-center justify-between gap-2">
-              <span className="text-[11px] text-muted-foreground">Match {score}%</span>
+              <span className="text-xs text-muted-foreground">Match {score}%</span>
               <div className="flex gap-2">
                 {friendState[u.id] === 'accepted' ? (
-                  <Button variant="outline" size="sm" className="h-8 rounded-full" disabled>Friends ✓</Button>
+                  <Button variant="outline" size="sm" className="h-8 min-h-[44px] rounded-full" disabled>Friends ✓</Button>
                 ) : (
-                  <Button variant="outline" size="sm" className="h-8 rounded-full" onClick={() => addFriend(u)}>
+                  <Button variant="outline" size="sm" className="h-8 min-h-[44px] rounded-full" onClick={() => addFriend(u)}>
                     <UserPlus className="h-3.5 w-3.5" />
                     {friendState[u.id] === 'pending' ? 'Request sent' : 'Add friend'}
                   </Button>
                 )}
-                <Button size="sm" className="h-8 rounded-full" onClick={() => setInviteBuddy(u)}>
+                <Button size="sm" className="h-8 min-h-[44px] rounded-full" onClick={() => setInviteBuddy(u)}>
                   <CalendarPlus className="h-3.5 w-3.5" /> Study invite
                 </Button>
               </div>

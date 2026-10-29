@@ -64,6 +64,10 @@
     "last_rating_prompt": {
       "type": "string",
       "description": "ISO timestamp of when the user was last asked to rate the app"
+    },
+    "deletion_requested": {
+      "type": "string",
+      "description": "ISO timestamp set when the member deleted their data and their login still needs removing"
     }
   },
   "required": [

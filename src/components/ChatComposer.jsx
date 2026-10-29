@@ -119,7 +119,7 @@ export default function ChatComposer({ onSend, disabled, disabledReason, placeho
       {pending.length > 0 && (
         <div className="mb-2 flex flex-wrap gap-1.5">
           {pending.map((a, i) => (
-            <span key={i} className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-[11px] font-semibold">
+            <span key={i} className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs font-semibold">
               <Paperclip className="h-3 w-3" />
               <span className="max-w-[120px] truncate">{a.name}</span>
               <button onClick={() => setPending((p) => p.filter((_, j) => j !== i))} aria-label="Remove attachment">

@@ -86,5 +86,41 @@
 
   body {
     @apply bg-background text-foreground font-body;
+    overscroll-behavior: none;
+  }
+
+  /* WebView: hide scrollbars, keep scrolling */
+  * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  *::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Inner scroll areas keep their scroll instead of dragging the whole app */
+  .overflow-y-auto,
+  .overflow-x-auto,
+  .overflow-auto {
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Interface chrome should not highlight like text when tapped twice */
+  button,
+  nav a,
+  [role="button"],
+  .badge {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  article,
+  p,
+  textarea,
+  input {
+    -webkit-user-select: text;
+    user-select: text;
   }
 }

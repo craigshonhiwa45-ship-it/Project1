@@ -55,7 +55,7 @@ export default function MessageAttachment({ attachment }) {
         <div className="h-1.5 w-20 overflow-hidden rounded-full bg-primary/20 sm:w-28">
           <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${progress}%` }} />
         </div>
-        <span className="text-[11px] font-bold text-primary">{fmt(attachment.duration_ms)}</span>
+        <span className="text-xs font-bold text-primary">{fmt(attachment.duration_ms)}</span>
         {url && (
           <audio
             ref={audioRef}

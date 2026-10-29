@@ -26,14 +26,17 @@ export default function Admin() {
     (async () => {
       const me = await base44.auth.me();
       if (!me || me.role !== 'admin') return;
+      const since = new Date(Date.now() - 7 * 86400000).toISOString();
+      const arr = (x) => (Array.isArray(x) ? x : x.items || []);
+      // Bounded queries: only the last week of activity and the newest rows.
       const [users, activity, ratings, feedback, reports] = await Promise.all([
         base44.entities.User.filter({}),
-        base44.entities.Activity.filter({}),
-        base44.entities.AppRating.filter({}),
-        base44.entities.Feedback.filter({}),
-        base44.entities.Report.filter({}),
+        base44.entities.Activity.filter({ created_date: { $gte: since } }),
+        base44.entities.AppRating.filter({}, { sort: '-created_date', limit: 100 }),
+        base44.entities.Feedback.filter({}, { sort: '-created_date', limit: 50 }),
+        base44.entities.Report.list({ sort: '-created_date', limit: 50 }),
       ]);
-      setData({ me, users: users.items || users, activity: activity.items || activity, ratings: ratings.items || ratings, feedback: feedback.items || feedback, reports: reports.items || reports });
+      setData({ me, users: arr(users), activity: arr(activity), ratings: arr(ratings), feedback: arr(feedback), reports: arr(reports) });
     })();
   }, []);
 
@@ -113,6 +116,16 @@ export default function Admin() {
         </Card>
       </div>
 
+      {data.users.filter((u) => u.deletion_requested).length > 0 && (
+        <div className="rounded-3xl border border-destructive/30 bg-destructive/5 p-4 text-sm">
+          <p className="font-bold text-destructive">Deletions to finish</p>
+          <p className="mt-1 text-muted-foreground">
+            {data.users.filter((u) => u.deletion_requested).length} member(s) deleted their data and need their login removed.
+            Open App Users in the app dashboard and remove them.
+          </p>
+        </div>
+      )}
+
       <Card className="rounded-3xl border-border shadow-sm">
         <CardHeader className="pb-0">
           <CardTitle className="font-heading text-base font-bold">Visits — last 7 days</CardTitle>
@@ -159,7 +172,7 @@ export default function Admin() {
               <div key={r.id} className="rounded-2xl bg-muted/40 p-3 text-sm">
                 <div className="flex items-center justify-between">
                   <p className="font-bold capitalize">{r.reason}</p>
-                  <Badge variant="outline" className="rounded-full text-[10px]">{r.status}</Badge>
+                  <Badge variant="outline" className="rounded-full text-xs">{r.status}</Badge>
                 </div>
                 {r.details && <p className="mt-1 text-xs text-muted-foreground">{r.details}</p>}
               </div>
@@ -173,7 +186,7 @@ export default function Admin() {
           <CardTitle className="font-heading text-base font-bold">Latest app ratings</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 p-4">
-          {data.ratings.slice(-6).reverse().map((r) => (
+          {data.ratings.slice(0, 6).map((r) => (
             <div key={r.id} className="flex items-center justify-between rounded-2xl bg-muted/40 p-3 text-sm">
               <Stars value={r.stars} />
               {r.comment && <p className="ml-3 min-w-0 flex-1 truncate text-xs text-muted-foreground">{r.comment}</p>}
@@ -188,7 +201,7 @@ export default function Admin() {
           <CardTitle className="font-heading text-base font-bold">Recent feedback</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 p-4">
-          {data.feedback.slice(-5).reverse().map((f) => (
+          {data.feedback.slice(0, 5).map((f) => (
             <div key={f.id} className="rounded-2xl bg-muted/40 p-3 text-sm">
               <p className="font-bold capitalize">{f.type} · {f.subject}</p>
               <p className="mt-1 text-xs text-muted-foreground">{f.message}</p>

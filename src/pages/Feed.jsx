@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Heart, MessageSquare, Repeat2, Send, Globe, Users, Paperclip, X } from 'lucide-react';
+import { Heart, MessageSquare, Repeat2, Send, Globe, Users, Paperclip, X, Flag } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import BuddyAvatar from '@/components/BuddyAvatar';
 import { Image } from '@/components/ui/image';
@@ -10,6 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/components/ui/use-toast';
 import { findViolation } from '@/lib/moderation';
+import { fetchFriendships, buddyIdsFrom } from '@/lib/studybuddy';
+import ReportDialog from '@/components/ReportDialog';
 
 export default function Feed() {
   const [me, setMe] = useState(null);
@@ -23,25 +25,25 @@ export default function Feed() {
   const [pendingAtts, setPendingAtts] = useState([]);
   const [openComments, setOpenComments] = useState(null);
   const [commentDraft, setCommentDraft] = useState('');
+  const [reportPost, setReportPost] = useState(null);
   const fileRef = useRef(null);
   const { toast } = useToast();
 
   const load = useCallback(async () => {
     const current = await base44.auth.me();
     setMe(current);
-    const [p, l, c, r, mine, theirs] = await Promise.all([
+    const [p, l, c, r, friendships] = await Promise.all([
       base44.entities.Post.list({ sort: '-created_date', limit: 100 }),
       base44.entities.PostLike.filter({}),
       base44.entities.PostComment.filter({}),
       base44.entities.PostRepost.filter({}),
-      base44.entities.Friendship.filter({ requester_id: current.id, status: 'accepted' }),
-      base44.entities.Friendship.filter({ addressee_id: current.id, status: 'accepted' }),
+      fetchFriendships(current.id),
     ]);
     setPosts(p.items || p);
     setLikes(l);
     setComments(c);
     setReposts(r);
-    setFriendIds([...mine.map((f) => f.addressee_id), ...theirs.map((f) => f.requester_id)]);
+    setFriendIds(buddyIdsFrom(friendships, current.id));
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -84,25 +86,33 @@ export default function Feed() {
       });
       return;
     }
-    await base44.entities.Post.create({ text: draft.trim(), visibility: draftVisibility, attachments: pendingAtts });
+    const created = await base44.entities.Post.create({ text: draft.trim(), visibility: draftVisibility, attachments: pendingAtts });
+    setPosts((ps) => [created, ...ps]);
     setDraft('');
     setPendingAtts([]);
     toast({ title: 'Posted!', description: draftVisibility === 'everyone' ? 'Shared with everyone on Studybuddy.' : 'Shared with your friends only.' });
-    load();
   };
 
   const toggleLike = async (post) => {
     const existing = likes.find((l) => l.post_id === post.id && l.user_id === me.id);
-    if (existing) await base44.entities.PostLike.delete(existing.id);
-    else await base44.entities.PostLike.create({ post_id: post.id, user_id: me.id });
-    load();
+    if (existing) {
+      await base44.entities.PostLike.delete(existing.id);
+      setLikes((ls) => ls.filter((l) => l.id !== existing.id));
+    } else {
+      const created = await base44.entities.PostLike.create({ post_id: post.id, user_id: me.id });
+      setLikes((ls) => [...ls, created]);
+    }
   };
 
   const toggleRepost = async (post) => {
     const existing = reposts.find((r) => r.post_id === post.id && r.user_id === me.id);
-    if (existing) await base44.entities.PostRepost.delete(existing.id);
-    else await base44.entities.PostRepost.create({ post_id: post.id, user_id: me.id });
-    load();
+    if (existing) {
+      await base44.entities.PostRepost.delete(existing.id);
+      setReposts((rs) => rs.filter((r) => r.id !== existing.id));
+    } else {
+      const created = await base44.entities.PostRepost.create({ post_id: post.id, user_id: me.id });
+      setReposts((rs) => [...rs, created]);
+    }
   };
 
   const addComment = async (post) => {
@@ -115,9 +125,9 @@ export default function Feed() {
       });
       return;
     }
-    await base44.entities.PostComment.create({ post_id: post.id, text: commentDraft.trim() });
+    const created = await base44.entities.PostComment.create({ post_id: post.id, text: commentDraft.trim() });
+    setComments((cs) => [...cs, created]);
     setCommentDraft('');
-    load();
   };
 
   return (
@@ -140,10 +150,10 @@ export default function Feed() {
         {pendingAtts.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1.5">
             {pendingAtts.map((a, i) => (
-              <span key={i} className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-[11px] font-semibold">
+              <span key={i} className="inline-flex items-center gap-1.5 rounded-full bg-muted px-2.5 py-1 text-xs font-semibold">
                 <Paperclip className="h-3 w-3" />
                 <span className="max-w-[120px] truncate">{a.name}</span>
-                <button onClick={() => setPendingAtts((p) => p.filter((_, j) => j !== i))} aria-label="Remove attachment">
+                <button onClick={() => setPendingAtts((p) => p.filter((_, j) => j !== i))} aria-label="Remove attachment" className="inline-flex items-center justify-center">
                   <X className="h-3 w-3" />
                 </button>
               </span>
@@ -156,14 +166,15 @@ export default function Feed() {
             <button
               onClick={() => fileRef.current?.click()}
               aria-label="Attach images"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-primary"
+              className="inline-flex h-11 w-11 min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               <Paperclip className="h-4 w-4" />
             </button>
             <button
               onClick={() => setDraftVisibility('everyone')}
+              aria-pressed={draftVisibility === 'everyone'}
               className={cn(
-                'inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition',
+                'inline-flex min-h-[44px] items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                 draftVisibility === 'everyone' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground'
               )}
             >
@@ -171,8 +182,9 @@ export default function Feed() {
             </button>
             <button
               onClick={() => setDraftVisibility('friends')}
+              aria-pressed={draftVisibility === 'friends'}
               className={cn(
-                'inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition',
+                'inline-flex min-h-[44px] items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                 draftVisibility === 'friends' ? 'border-secondary bg-secondary/10 text-secondary' : 'border-border text-muted-foreground'
               )}
             >
@@ -197,9 +209,9 @@ export default function Feed() {
               <BuddyAvatar name={userName(p.created_by_id)} size="sm" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-bold">{userName(p.created_by_id)}</p>
-                <p className="text-[11px] text-muted-foreground">{new Date(p.created_date).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</p>
+                <p className="text-xs text-muted-foreground">{new Date(p.created_date).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</p>
               </div>
-              <Badge variant="outline" className="rounded-full text-[10px] text-muted-foreground">
+              <Badge variant="outline" className="rounded-full text-xs text-muted-foreground">
                 {p.visibility === 'everyone' ? <Globe className="mr-1 h-3 w-3" /> : <Users className="mr-1 h-3 w-3" />}
                 {p.visibility === 'everyone' ? 'Public' : 'Friends'}
               </Badge>
@@ -222,41 +234,55 @@ export default function Feed() {
             <div className="mt-3 flex items-center gap-1 border-t border-border pt-2 text-muted-foreground">
               <button
                 onClick={() => toggleLike(p)}
-                className={cn('inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition hover:bg-muted', iLiked && 'text-rose-500')}
+                aria-label={iLiked ? 'Remove like' : 'Like this post'}
+                aria-pressed={iLiked}
+                className={cn('inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background', iLiked && 'text-rose-500')}
               >
                 <Heart className={cn('h-4 w-4', iLiked && 'fill-rose-500')} /> {postLikes.length}
               </button>
               <button
                 onClick={() => setOpenComments(openComments === p.id ? null : p.id)}
-                className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition hover:bg-muted"
+                aria-label="Show comments"
+                className="inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
                 <MessageSquare className="h-4 w-4" /> {postComments.length}
               </button>
               <button
                 onClick={() => toggleRepost(p)}
-                className={cn('inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition hover:bg-muted', iReposted && 'text-primary')}
+                aria-label={iReposted ? 'Undo repost' : 'Repost'}
+                aria-pressed={iReposted}
+                className={cn('inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background', iReposted && 'text-primary')}
               >
                 <Repeat2 className="h-4 w-4" /> {postReposts.length}
               </button>
+              {p.created_by_id !== me.id && (
+                <button
+                  onClick={() => setReportPost(p)}
+                  aria-label="Report this post"
+                  className="ml-auto inline-flex min-h-[44px] items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                >
+                  <Flag className="h-3.5 w-3.5" /> Report
+                </button>
+              )}
             </div>
             {openComments === p.id && (
               <div className="mt-2 space-y-2 rounded-2xl bg-muted/40 p-3">
                 {postComments.map((c) => (
-                  <div key={c.id} className="text-xs">
+                  <div key={c.id} className="text-sm">
                     <span className="font-bold">{userName(c.created_by_id)}</span>{' '}
                     <span className="text-muted-foreground">{c.text}</span>
                   </div>
                 ))}
-                {postComments.length === 0 && <p className="text-xs text-muted-foreground">No comments yet.</p>}
+                {postComments.length === 0 && <p className="text-sm text-muted-foreground">No comments yet.</p>}
                 <div className="flex gap-2 pt-1">
                   <Input
                     value={commentDraft}
                     onChange={(e) => setCommentDraft(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && addComment(p)}
                     placeholder="Add a comment…"
-                    className="h-8 rounded-full bg-card text-xs"
+                    className="h-11 min-h-[44px] rounded-full bg-card text-sm"
                   />
-                  <Button size="sm" className="h-8 rounded-full px-3" onClick={() => addComment(p)}>Reply</Button>
+                  <Button size="sm" className="min-h-[44px] rounded-full px-3" onClick={() => addComment(p)}>Reply</Button>
                 </div>
               </div>
             )}
@@ -268,6 +294,15 @@ export default function Feed() {
           Nothing here yet — be the first to post!
         </p>
       )}
+
+      <ReportDialog
+        open={!!reportPost}
+        onOpenChange={(v) => !v && setReportPost(null)}
+        meId={me.id}
+        reportedId={reportPost?.created_by_id}
+        reportedName="this post"
+        postId={reportPost?.id}
+      />
     </div>
   );
 }

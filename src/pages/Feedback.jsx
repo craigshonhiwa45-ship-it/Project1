@@ -76,7 +76,7 @@ export default function Feedback() {
         <Button type="submit" className="w-full rounded-full">
           <Send className="h-4 w-4" /> Send to the team
         </Button>
-        <p className="text-center text-[11px] text-muted-foreground">
+        <p className="text-center text-xs text-muted-foreground">
           Reports about another user may lead to a review of their account.
         </p>
       </form>

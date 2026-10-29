@@ -1,27 +1,40 @@
+import { Suspense, lazy } from 'react';
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { ThemeProvider } from 'next-themes';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import ScrollToTop from './components/ScrollToTop';
-// Add page imports here
-import Discover from '@/pages/Discover';
-import Feed from '@/pages/Feed';
-import Chat from '@/pages/Chat';
-import Dashboard from '@/pages/Dashboard';
-import Profile from '@/pages/Profile';
-import Rooms from '@/pages/Rooms';
-import Room from '@/pages/Room';
-import Admin from '@/pages/Admin';
-import BuddyProfile from '@/pages/BuddyProfile';
-import Feedback from '@/pages/Feedback';
-import Login from '@/pages/Login';
-import Register from '@/pages/Register';
-import ForgotPassword from '@/pages/ForgotPassword';
-import ResetPassword from '@/pages/ResetPassword';
 import AppLayout from '@/components/AppLayout';
+
+// Pages are code-split so the first screen (and the shell) loads fast.
+const Discover = lazy(() => import('@/pages/Discover'));
+const Feed = lazy(() => import('@/pages/Feed'));
+const Chat = lazy(() => import('@/pages/Chat'));
+const Dashboard = lazy(() => import('@/pages/Dashboard'));
+const Profile = lazy(() => import('@/pages/Profile'));
+const Rooms = lazy(() => import('@/pages/Rooms'));
+const Room = lazy(() => import('@/pages/Room'));
+const Admin = lazy(() => import('@/pages/Admin'));
+const BuddyProfile = lazy(() => import('@/pages/BuddyProfile'));
+const Feedback = lazy(() => import('@/pages/Feedback'));
+const Safety = lazy(() => import('@/pages/Safety'));
+const Privacy = lazy(() => import('@/pages/Privacy'));
+const Terms = lazy(() => import('@/pages/Terms'));
+const DeleteAccount = lazy(() => import('@/pages/DeleteAccount'));
+const Login = lazy(() => import('@/pages/Login'));
+const Register = lazy(() => import('@/pages/Register'));
+const ForgotPassword = lazy(() => import('@/pages/ForgotPassword'));
+const ResetPassword = lazy(() => import('@/pages/ResetPassword'));
+
+const PageSpinner = () => (
+  <div className="flex min-h-[50vh] items-center justify-center">
+    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
+  </div>
+);
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -48,27 +61,33 @@ const AuthenticatedApp = () => {
 
   // Render the main app
   return (
-    <Routes>
-      {/* Add your page Route elements here */}
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/reset-password" element={<ResetPassword />} />
-      <Route element={<AppLayout />}>
-        <Route path="/" element={<Discover />} />
-        <Route path="/feed" element={<Feed />} />
-        <Route path="/chat" element={<Chat />} />
-        <Route path="/chat/:conversationId" element={<Chat />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/buddy/:id" element={<BuddyProfile />} />
-        <Route path="/feedback" element={<Feedback />} />
-        <Route path="/rooms" element={<Rooms />} />
-        <Route path="/room/:code" element={<Room />} />
-        <Route path="/admin" element={<Admin />} />
-      </Route>
-      <Route path="*" element={<PageNotFound />} />
-    </Routes>
+    <Suspense fallback={<PageSpinner />}>
+      <Routes>
+        {/* Add your page Route elements here */}
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route element={<AppLayout />}>
+          <Route path="/" element={<Discover />} />
+          <Route path="/feed" element={<Feed />} />
+          <Route path="/chat" element={<Chat />} />
+          <Route path="/chat/:conversationId" element={<Chat />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/buddy/:id" element={<BuddyProfile />} />
+          <Route path="/feedback" element={<Feedback />} />
+          <Route path="/safety" element={<Safety />} />
+          <Route path="/privacy" element={<Privacy />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/delete-account" element={<DeleteAccount />} />
+          <Route path="/rooms" element={<Rooms />} />
+          <Route path="/room/:code" element={<Room />} />
+          <Route path="/admin" element={<Admin />} />
+        </Route>
+        <Route path="*" element={<PageNotFound />} />
+      </Routes>
+    </Suspense>
   );
 };
 
@@ -78,11 +97,13 @@ function App() {
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
-        <Router>
-          <ScrollToTop />
-          <AuthenticatedApp />
-        </Router>
-        <Toaster />
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <Router>
+            <ScrollToTop />
+            <AuthenticatedApp />
+          </Router>
+          <Toaster />
+        </ThemeProvider>
       </QueryClientProvider>
     </AuthProvider>
   )

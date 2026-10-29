@@ -19,12 +19,17 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [showOtp, setShowOtp] = useState(false);
   const [otpCode, setOtpCode] = useState("");
+  const [agreed, setAgreed] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     if (password !== confirmPassword) {
       setError("Passwords do not match");
+      return;
+    }
+    if (!agreed) {
+      setError("Please confirm you are 13 or older and accept the Terms and Privacy policy.");
       return;
     }
     setLoading(true);
@@ -68,6 +73,10 @@ export default function Register() {
   };
 
   const handleGoogle = () => {
+    if (!agreed) {
+      setError("Please confirm you are 13 or older and accept the Terms and Privacy policy.");
+      return;
+    }
     base44.auth.loginWithProvider("google", safeReturnTo());
   };
 
@@ -216,7 +225,21 @@ export default function Register() {
             />
           </div>
         </div>
-        <Button type="submit" className="w-full h-12 font-medium" disabled={loading}>
+        <label className="flex items-start gap-2 text-sm text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={agreed}
+            onChange={(e) => setAgreed(e.target.checked)}
+            className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
+          />
+          <span>
+            I am 13 or older and I accept the{" "}
+            <Link to="/terms" className="text-primary font-medium hover:underline">Terms of service</Link>{" "}
+            and{" "}
+            <Link to="/privacy" className="text-primary font-medium hover:underline">Privacy policy</Link>.
+          </span>
+        </label>
+        <Button type="submit" className="w-full h-12 font-medium" disabled={loading || !agreed}>
           {loading ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />

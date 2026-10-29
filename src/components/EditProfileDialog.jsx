@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import SelectSheet from '@/components/SelectSheet';
 import { Switch } from '@/components/ui/switch';
 
 export default function EditProfileDialog({ open, onOpenChange, me, onSaved }) {
@@ -73,26 +73,26 @@ export default function EditProfileDialog({ open, onOpenChange, me, onSaved }) {
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs font-bold text-muted-foreground">Year of study</Label>
-              <Select value={form.year} onValueChange={(v) => setForm({ ...form, year: v })}>
-                <SelectTrigger className="rounded-2xl"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {[1, 2, 3, 4, 5, 6].map((y) => (
-                    <SelectItem key={y} value={String(y)}>Year {y}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SelectSheet
+                value={form.year}
+                onValueChange={(v) => setForm({ ...form, year: v })}
+                title="Year of study"
+                options={[1, 2, 3, 4, 5, 6].map((y) => ({ value: String(y), label: `Year ${y}` }))}
+              />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs font-bold text-muted-foreground">Gender</Label>
-              <Select value={form.gender} onValueChange={(v) => setForm({ ...form, gender: v })}>
-                <SelectTrigger className="rounded-2xl"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="male">Male</SelectItem>
-                  <SelectItem value="female">Female</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                  <SelectItem value="prefer not to say">Prefer not to say</SelectItem>
-                </SelectContent>
-              </Select>
+              <SelectSheet
+                value={form.gender}
+                onValueChange={(v) => setForm({ ...form, gender: v })}
+                title="Gender"
+                options={[
+                  { value: 'male', label: 'Male' },
+                  { value: 'female', label: 'Female' },
+                  { value: 'other', label: 'Other' },
+                  { value: 'prefer not to say', label: 'Prefer not to say' },
+                ]}
+              />
             </div>
           </div>
           <div className="space-y-1.5">
@@ -107,7 +107,7 @@ export default function EditProfileDialog({ open, onOpenChange, me, onSaved }) {
           <div className="flex items-center justify-between rounded-2xl bg-muted/40 px-3 py-2.5">
             <div>
               <p className="text-sm font-semibold">Private buddy list</p>
-              <p className="text-[11px] text-muted-foreground">Others see your StudyBuddies count only.</p>
+              <p className="text-xs text-muted-foreground">Others see your StudyBuddies count only.</p>
             </div>
             <Switch checked={form.hide_social} onCheckedChange={(v) => setForm({ ...form, hide_social: v })} />
           </div>
